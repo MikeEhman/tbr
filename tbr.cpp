@@ -7,6 +7,7 @@
 #include <vector>
 #include <deque>
 #include <sstream>
+#include <iostream>
 
 using namespace std;
 
@@ -23,6 +24,192 @@ template <typename T>
 #define TXTWIDTH 50
 #define TXTHEIGHT LINES-2
 #define BUFSIZE 1024
+
+
+
+/* Begin Class Definitions */
+
+enum direction {EAST, WEST, NORTH, SOUTH};
+
+int locid = 0;
+
+typedef struct location_data {
+	string name;
+	string description;
+} loc_data;
+
+class Location {
+	private:
+		int id;
+		string name;
+		string description;
+		Location* east=NULL;
+		Location* west=NULL;
+		Location* north=NULL;
+		Location* south=NULL;
+	public:
+		Location(){};
+		Location(loc_data*);
+		
+		void set_nbr(Location*,direction,bool); // connect to another location
+		Location* get_nbr(direction);
+		
+		void set_name(string);
+		void set_description(string ldesc){description=ldesc;};
+		
+		string get_name();
+		string get_description();
+};
+
+Location::Location(loc_data* ldat){
+	id = locid++;
+	set_name(ldat->name);
+	description = ldat->description;
+};
+
+void Location::set_name(string lname) {
+	name = lname;
+}
+
+string Location::get_name(){
+	return name;
+}
+
+string Location::get_description(){
+	return description;
+}
+
+void Location::set_nbr(Location* location, direction d, bool bidirectional) {
+	switch (d) {
+		case WEST:
+			west = location;
+			if (bidirectional) location->east = this;
+			break;
+		
+		case EAST:
+			east = location;
+			if (bidirectional) location->west = this;
+			break;
+		
+		case NORTH:
+			east = location;
+			if (bidirectional) location->south = this;
+			break;
+		
+		case SOUTH:
+			east = location;
+			if (bidirectional) location->north = this;
+			break;
+	}
+}
+
+Location* Location::get_nbr(direction d) {
+	switch (d) {
+		case WEST:
+			if (west)
+				return west;
+			else
+				return NULL;
+			break;
+		
+		case EAST:
+			if (east)
+				return east;
+			else
+				return NULL;
+			break;
+		
+		case NORTH:
+			if (north)
+				return north;
+			else
+				return NULL;
+			break;
+		
+		case SOUTH:
+			if (south)
+				return south;
+			else
+				return NULL;
+			break;
+	}
+}
+
+int chid = 0;
+
+typedef struct character_data {
+	string name;
+	int hp;
+	int mp;
+	Location *location;
+} char_data;
+
+class Character {
+	protected:
+		int id;
+		string name;
+		int hp;
+		int mp;
+		Location* location;
+	
+	public:
+		Character(char_data*);
+		Character() {};
+		string get_name();			void set_name(string);
+		int get_hp();				void set_hp(int);
+		int get_mp();				void set_mp(int);
+		Location* get_location();	void set_location(Location*);
+};
+
+
+Character::Character(char_data* dat){
+	id=chid++;
+	set_name(dat->name);
+	set_hp(dat->hp);
+	set_mp(dat->mp);
+	set_location(dat->location);
+}
+
+// setters
+
+void Character::set_name(string chname) {
+	name = chname;
+}
+
+void Character::set_hp(int chhp) {
+	hp = chhp;
+}
+
+void Character::set_mp(int chmp) {
+	mp = chmp;
+}
+
+void Character::set_location(Location* chlocation) {
+	location = chlocation;
+}
+
+// getters 
+
+string Character::get_name(){
+	return name;
+}
+
+int Character::get_hp(){
+	return hp;
+}
+
+int Character::get_mp(){
+	return mp;
+}
+
+Location* Character::get_location(){
+	return location;
+}
+
+/* End of Class Definitions */
+
+
+
 
 
 WINDOW *my_wins[4];
@@ -124,10 +311,71 @@ int user_output_center(string str){
 	return 0;
 }
 
+/* Initializers here */
+
+
+Location* locations_init() {
+	// initialize hall
+	
+	loc_data *ldat1 = new loc_data;
+	ldat1->name = "Hall";
+	ldat1->description = "It's a shitty hall. You should probably take a dump in the middle of it.";
+	Location *loc_hall = new Location(ldat1);
+
+
+	loc_data *ldat2 = new loc_data;
+	ldat2->name = "Kitchen";
+	ldat2->description = "It's an empty kitchen. Suck my dick here.";
+	Location *loc_kitchen = new Location(ldat2);
+
+	// connect
+	loc_hall->set_nbr(loc_kitchen,NORTH,TRUE);
+	
+	return loc_hall;
+}
+
+
+Character* characters_init() {
+	// initialize player
+	char_data *pdat = new char_data;
+	pdat->name = "Mike Ehman";
+	pdat->hp = 100;
+	pdat->mp = 100;
+	Character *player = new Character(pdat);
+	return player;
+}
+
+int test() {
+
+	cout << "Testing..." << endl;
+
+	Location* initloc = locations_init();
+	Character* player = characters_init();
+	player->set_location(initloc);
+
+	printf("%p",player->get_location());
+	
+	cout << initloc->get_name() << endl;
+	cout << initloc->get_description() << endl;
+	
+	Location* loc = player->get_location();
+	cout << loc->get_name() << endl;
+	
+	return 1;
+}
 
 int main() {
 	
+	// if (test()!=0){
+		// puts("error");
+		// return 1;
+	// }
 	
+	cout << "Running" << endl;
+	
+	Location* initloc = locations_init();
+	Character* player = characters_init();
+	player->set_location(initloc);
 	
 	puts("Initializing");
 	char str[256];
@@ -146,6 +394,7 @@ int main() {
 	wrefresh(leftwin);
 	
 	centerwin = subwin(stdscr,LINES-1,50,0,15);
+	scrollok(centerwin, TRUE);
 	mvwprintw(centerwin,LINES/2,0,"CENTER");
 	wrefresh(centerwin);
 	
@@ -189,7 +438,26 @@ int main() {
 				
 		else if (str=="quit")
 			break;
+		
+		else if (str=="me") {
+			output_center("Your name:		" + player->get_name());
+			output_center("Your current hp:	" + NumberToString(player->get_hp()));
+			output_center("Your current mp:	" + NumberToString(player->get_mp()));
+			output_center("Your current location:	" + player->get_location()->get_name());
+		}
+		
+		else if (str=="look") {
+			output_center("You look around.");
+			output_center(player->get_location()->get_description());
 			
+		}
+		
+		else if (str=="hit me") {
+			output_center("You hit yourself.");
+			output_center("You are damaged by 10");
+			player->set_hp((player->get_hp())-10);
+		}
+		
 		else {
 			output_center("Invalid input: " + str);
 		}
